@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot</title>
+    <link rel="stylesheet" href="./client.css">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+
+</head>
+
+<body>
+      
+    <video muted id="myvideo" autoplay></video>
+    <video id="peervideo" autoplay></video>
+
+</body>
+
+<script>
+
+    var peer = new Peer();
+        peer.on('open', (id) => {
+            console.log("Peer ID:", id);
+
+            fetch('/sendrobotpeer', {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'peerId=' + encodeURIComponent(id) 
+            }).then(res => res.json()).then(responseData => {
+                console.log("Server response:", responseData);
+            }).catch(error => {
+                console.error("Error sending Peer ID to server:", error);
+            });
+
+            
+        });
+
+ 
+    peer.on('connection', function(conn) {
+        conn.on('data', function(data){
+        console.log(data);
+        
+        });
+    });
+
+
+    var getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+    peer.on('call', function(call) {
+        getUserMedia({ video: true, audio: true }, function(stream) {
+            call.answer(stream); 
+            document.getElementById("myvideo").srcObject=stream;
+            call.on('stream', function(remoteStream) {
+                document.getElementById('peervideo').srcObject = remoteStream;
+            });
+        }, function(err) {
+            console.log('Failed to get local stream', err);
+        });
+    });
+
+
+</script>
+</html>

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RobotController</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <link rel="stylesheet" href="./client.css">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+
+</head>
+
+<body>
+<div class="div">
+
+    <video muted id="myvideo" autoplay></video>
+    <video id="peervideo" autoplay></video>
+
+</div>
+
+
+</body>
+
+<script>    
+    let lastCheckTime = 0;
+
+    window.addEventListener("gamepadconnected", (event) => {
+        const gp = navigator.getGamepads()[event.gamepad.index];
+        console.log("joystick connectado")
+        updateGamepadStatus();
+    });
+
+    window.addEventListener("gamepaddisconnected", (event) => {
+        console.log("joystick desconectado")  
+    });
+
+    var otherpeer 
+    const connections = {};
+    var peer
+    window.onload = initializePeer;
+
+    function initializePeer() {
+        peer = new Peer();
+        peer.on('open', function(id) {
+            console.log('My peer ID is: ' + id);
+
+            getPeerIdFromServer(peer,id);            
+        });
+    }
+
+
+    function getPeerIdFromServer(peer , senderId) {
+        fetch('/sendpeerid', {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `senderId=${senderId}`
+        })
+        .then(res => res.json())
+        .then(data => {
+            console.log('robot peerID--> '+data.peerId)
+            otherpeer= data.peerId
+
+            console.log('Connection opened!');
+            sendMessage(peer,'Peer Connected');
+            console.log("Message sent successfully!");
+            startCall(peer);
+        })
+        .catch(error => {
+            console.error('Erro ao obter o Peer ID do servidor:', error);
+        });
+    }
+  
+    
+    function sendMessage(peer, msg) {
+        if (otherpeer) {
+            if (otherpeer in connections && connections[otherpeer].open) {
+               
+                connections[otherpeer].send(msg);
+            } else {
+                var conn = peer.connect(otherpeer);
+                conn.on('open', () => {
+                    connections[otherpeer] = conn;
+                    conn.send(msg);
+                });
+            }
+        } else {
+            console.error("Other peer ID is not available yet!");
+        }
+    }
+    
+
+    
+    function startCall(peer) {
+        if (otherpeer) {
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then(function(stream) {
+                var call = peer.call(otherpeer, stream);
+                document.getElementById("myvideo").srcObject=stream=stream;
+                call.on('stream', function(remoteStream) {
+                    document.getElementById('peervideo').srcObject = remoteStream;
+                    console.log('Recebendo stream do outro peer.');
+                });
+            })
+            .catch(function(err) {
+                console.log('Failed to get local stream', err);
+            });
+        } else {
+            console.error("Other peer ID is not available yet!");
+        }
+    }
+
+
+let keysPressed = {};
+
+document.addEventListener('keydown', (e) => {
+    // Prevent default action if needed
+    e.preventDefault();
+    
+    if (!keysPressed[e.key.toLowerCase()]) {
+        keysPressed[e.key.toLowerCase()] = true;
+
+        if (e.key.toLowerCase() === 'w') {
+            console.log('Mensage send -> ' + 'up');
+            sendMessage(peer, '87');
+            sendMessageServer('87');
+        } else if (e.key.toLowerCase() === 's') {
+            sendMessage(peer, '83');
+            sendMessageServer('83');
+        } else if (e.key.toLowerCase() === 'a') {
+            sendMessage(peer, '65');
+            sendMessageServer('65');
+        } else if (e.key.toLowerCase() === 'd') {
+            sendMessage(peer, '68');
+            sendMessageServer('68');
+        }
+    }
+
+
+
+    if (!keysPressed[e.key]) {
+        keysPressed[e.key] = true;
+
+        if(e.key ==='ArrowUp'){
+            console.log('Mensage send -> ' +'up');
+            sendMessage(peer,'up');
+            sendMessageServer('up');
+        }else if(e.key ==='ArrowDown'){
+            console.log('Mensage send -> ' +'down');
+            sendMessage(peer,'down');
+            sendMessageServer('down');
+        }else if(e.key ==='ArrowLeft'){
+            console.log('Mensage send -> ' +'left');
+            sendMessage(peer,'left');
+            sendMessageServer('left');
+        }else if(e.key ==='ArrowRight'){
+            console.log('Mensage send -> ' +'right');
+            sendMessage(peer,'right');
+            sendMessageServer('right');
+        }
+    }
+    
+
+});
+
+document.addEventListener('keyup', (e) => {
+    // Prevent default action if needed
+    e.preventDefault();
+    
+    if (keysPressed[e.key.toLowerCase()]) {
+        delete keysPressed[e.key.toLowerCase()];
+
+        if (e.key.toLowerCase() === 'w') {
+            sendMessage(peer, 'p');
+            sendMessageServer('p');
+        } else if (e.key.toLowerCase() === 's') {
+            console.log('Mensagem enviada -> stop down');
+            sendMessage(peer, 'p');
+            sendMessageServer('p');
+        } else if (e.key.toLowerCase() === 'a') {
+            sendMessage(peer, 'p');
+            sendMessageServer('p');
+        } else if (e.key.toLowerCase() === 'd') {
+            sendMessage(peer, 'p');
+            sendMessageServer('p');
+        }
+    }
+    
+    if (keysPressed[e.key]) {
+        delete keysPressed[e.key];
+
+        if(e.key ==='ArrowUp'){
+            console.log('Mensage send -> ' +'up');
+            sendMessage(peer,'p');
+            sendMessageServer('p');
+        }else if(e.key ==='ArrowDown'){
+            console.log('Mensage send -> ' +'down');
+            sendMessage(peer,'p');
+            sendMessageServer('p');
+        }else if(e.key ==='ArrowLeft'){
+            console.log('Mensage send -> ' +'left');
+            sendMessage(peer,'p');
+            sendMessageServer('p');
+        }else if(e.key ==='ArrowRight'){
+            console.log('Mensage send -> ' +'right');
+            sendMessage(peer,'p');
+            sendMessageServer('p');
+        }
+    }
+});
+
+          
+
+    const sendMessageServer = (msg) => {
+        fetch('/sendMessage', {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: 'control=' + encodeURIComponent(msg) 
+        })
+        .then(res => res.text())
+        .then(responseData => {
+            //console.log("Server response:", responseData);
+        })
+        .catch(error => {
+            console.error("Error sending Message to server:", error);
+        });
+    };
+
+    function updateGamepadStatus() {
+            const gp = navigator.getGamepads()[0];
+            if (gp) {
+                let currentTime = Date.now();
+                if (currentTime - lastCheckTime >= 1500) { // 1.5 segundos
+                    let status = `ID: ${gp.id}\n`;
+
+                    // Verificar apenas os eixos 0 e 1
+                    for (let i = 0; i < 2; i++) {
+                        let axisValue = gp.axes[i].toFixed(2);
+                        status += `Axis ${i}: ${axisValue}\n`;
+
+                        // Verificar se o eixo atingiu o valor máximo ou mínimo
+                        if (axisValue >= 1.00) {
+                            if(i==1){
+                                sendMessageServer('83');
+                            }else if (i==0){
+                                sendMessageServer('68');
+                            }
+                            lastCheckTime = currentTime;
+                        } else if (axisValue <= -1.00){
+                            if(i==1){
+                                sendMessageServer('87');
+                            }else if (i==0){
+                                sendMessageServer('65');
+                            }
+                            lastCheckTime = currentTime;
+                        }
+                    }
+                }
+            }
+            requestAnimationFrame(updateGamepadStatus);
+    }
+</script>
+
+</html>
